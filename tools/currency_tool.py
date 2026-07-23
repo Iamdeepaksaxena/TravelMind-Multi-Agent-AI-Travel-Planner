@@ -1,87 +1,97 @@
+import os
+import time
 import requests
+from dotenv import load_dotenv
+
 from common.logger import get_logger
 from common.custom_exceptions import CustomException
 
-# Initialize logger
 logger = get_logger(__name__)
+
+load_dotenv()
 
 BASE_URL = "https://open.er-api.com/v6/latest"
 
+logger.info("Currency API configuration loaded.")
 
-def convert_currency(amount: float, from_currency: str, to_currency: str):
-    """
-    Convert currency using ExchangeRate-API.
+MAX_RETRIES = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s, 8s between attempts
+REQUEST_TIMEOUT = 30
 
-    Returns:
-    {
-        "amount": 100,
-        "from_currency": "USD",
-        "to_currency": "INR",
-        "exchange_rate": 85.62,
-        "converted_amount": 8562.00
-    }
-    """
 
+def convert_currency(amount: float, from_currency: str, to_currency: str) -> dict:
     from_currency = from_currency.upper()
     to_currency = to_currency.upper()
 
-    logger.info(
-        f"Converting {amount} {from_currency} -> {to_currency}"
-    )
+    last_error: Exception | None = None
 
-    try:
-        url = f"{BASE_URL}/{from_currency}"
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            logger.info(
+                f"Fetching exchange rate {from_currency}->{to_currency} "
+                f"(attempt {attempt}/{MAX_RETRIES})"
+            )
 
-        response = requests.get(url, timeout=20)
-        response.raise_for_status()
+            response = requests.get(
+                f"{BASE_URL}/{from_currency}",
+                timeout=REQUEST_TIMEOUT
+            )
 
-        data = response.json()
+            try:
+                data = response.json()
+            except ValueError as e:
+                raise CustomException("Currency API returned invalid JSON.", e)
 
-    except requests.exceptions.RequestException as e:
-        logger.exception("Currency API request failed.")
-        raise CustomException("Currency API request failed", e)
+            if data.get("result") != "success":
+                raise CustomException(
+                    f"Currency API error: {data.get('error-type', 'unknown error')}"
+                )
 
-    except ValueError as e:
-        logger.exception("Invalid JSON received from Currency API.")
-        raise CustomException("Invalid JSON received", e)
+            response.raise_for_status()
 
-    if data.get("result") != "success":
-        logger.error("Currency API returned an unsuccessful response.")
-        raise CustomException("Currency conversion failed.")
+            rates = data.get("rates", {})
+            if to_currency not in rates:
+                raise CustomException(
+                    f"Currency '{to_currency}' not found in exchange rate response."
+                )
 
-    rates = data.get("rates", {})
+            exchange_rate = rates[to_currency]
+            converted_amount = round(amount * exchange_rate, 4)
 
-    if to_currency not in rates:
-        logger.error(f"Currency '{to_currency}' not found in exchange rates.")
-        raise CustomException(f"Unsupported currency: {to_currency}")
+            logger.info(
+                f"Converted {amount} {from_currency} -> "
+                f"{converted_amount} {to_currency} (rate: {exchange_rate})"
+            )
 
-    exchange_rate = rates[to_currency]
-    converted_amount = round(amount * exchange_rate, 2)
+            return {
+                "amount": amount,
+                "from_currency": from_currency,
+                "to_currency": to_currency,
+                "exchange_rate": exchange_rate,
+                "converted_amount": converted_amount,
+            }
 
-    logger.info(
-        f"Conversion successful: {amount} {from_currency} = "
-        f"{converted_amount} {to_currency}"
-    )
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            logger.warning(
+                f"Currency API request failed on attempt {attempt}/{MAX_RETRIES}: {e}"
+            )
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_BACKOFF_SECONDS * attempt)
 
-    return {
-        "amount": amount,
-        "from_currency": from_currency,
-        "to_currency": to_currency,
-        "exchange_rate": round(exchange_rate, 4),
-        "converted_amount": converted_amount
-    }
+        except CustomException:
+            # Don't retry on a well-formed API error response (e.g. bad
+            # currency code) — retrying won't fix that, only a network
+            # failure benefits from another attempt.
+            raise
+
+    # Exhausted all retries on network-level failures.
+    logger.exception("Currency API request failed after all retries.")
+    raise CustomException("Currency API request failed after retries.", last_error)
 
 
 # if __name__ == "__main__":
 #     try:
-
-#         print(convert_currency(1000, "INR", "JPY"))
-#         print()
-
-#         print(convert_currency(500, "USD", "EUR"))
-#         print()
-
-#         print(convert_currency(100, "GBP", "INR"))
-
+#         print(convert_currency(1, "INR", "USD"))
 #     except CustomException as e:
-#         logger.exception(str(e))
+#         logger.exception(f"CustomException occurred: {str(e)}")

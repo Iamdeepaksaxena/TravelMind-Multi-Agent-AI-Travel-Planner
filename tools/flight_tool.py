@@ -1,5 +1,5 @@
-import os 
-import re 
+import os
+import re
 import certifi
 import airportsdata
 import pycountry
@@ -20,7 +20,7 @@ os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 API_KEY = os.getenv("AVIATIONSTACK_API_KEY")
 
 # Default origin when user says only destination, e.g. "Japan trip"
-# Change this if your default location is not Bangladesh/Dhaka.
+# default location is Delhi
 DEFAULT_ORIGIN_IATA = os.getenv("DEFAULT_ORIGIN_IATA", "DEL")
 
 BASE_URL = "https://api.aviationstack.com/v1/flights"
@@ -33,104 +33,371 @@ except Exception as e:
     raise CustomException("Failed to load airports data", e)
 
 COUNTRY_ALIASES = {
-    "usa": "US",
-    "u.s.a": "US",
-    "u.s.": "US",
-    "america": "US",
-    "united states": "US",
-    "uk": "GB",
-    "u.k.": "GB",
-    "britain": "GB",
-    "england": "GB",
-    "uae": "AE",
-    "dubai": "AE",
-    "south korea": "KR",
-    "korea": "KR",
+    # North America
+    "usa": "US", "u.s.a": "US", "u.s.": "US", "us": "US",
+    "america": "US", "united states": "US", "united states of america": "US",
+    "canada": "CA",
+    "mexico": "MX",
+
+    # UK / Europe
+    "uk": "GB", "u.k.": "GB", "britain": "GB", "england": "GB",
+    "great britain": "GB", "united kingdom": "GB",
+    "germany": "DE", "deutschland": "DE",
+    "france": "FR",
+    "italy": "IT",
+    "spain": "ES",
+    "portugal": "PT",
+    "netherlands": "NL", "holland": "NL",
+    "belgium": "BE",
+    "switzerland": "CH",
+    "austria": "AT",
+    "ireland": "IE",
+    "sweden": "SE",
+    "norway": "NO",
+    "denmark": "DK",
+    "finland": "FI",
+    "iceland": "IS",
+    "poland": "PL",
+    "greece": "GR",
+    "czech republic": "CZ", "czechia": "CZ",
+    "hungary": "HU",
+    "romania": "RO",
     "russia": "RU",
-    "vietnam": "VN",
+    "ukraine": "UA",
+
+    # Middle East
+    "uae": "AE", "dubai": "AE", "united arab emirates": "AE",
+    "qatar": "QA",
+    "saudi arabia": "SA", "ksa": "SA",
+    "kuwait": "KW",
+    "bahrain": "BH",
+    "oman": "OM",
+    "israel": "IL",
+    "jordan": "JO",
+    "lebanon": "LB",
+    "iran": "IR",
+    "iraq": "IQ",
+    "turkey": "TR", "turkiye": "TR",
+    "egypt": "EG",
+
+    # South Asia
+    "india": "IN", "bharat": "IN",
     "bangladesh": "BD",
-    "india": "IN",
+    "nepal": "NP",
+    "sri lanka": "LK", "ceylon": "LK",
+    "pakistan": "PK",
+    "bhutan": "BT",
+    "maldives": "MV",
+    "afghanistan": "AF",
+
+    # East / Southeast Asia
     "japan": "JP",
     "china": "CN",
+    "south korea": "KR", "korea": "KR",
+    "north korea": "KP",
+    "taiwan": "TW",
+    "hong kong": "HK",
     "singapore": "SG",
     "malaysia": "MY",
     "thailand": "TH",
     "indonesia": "ID",
-    "nepal": "NP",
-    "qatar": "QA",
-    "saudi arabia": "SA",
-    "turkey": "TR",
-    "canada": "CA",
+    "vietnam": "VN",
+    "philippines": "PH",
+    "cambodia": "KH",
+    "laos": "LA",
+    "myanmar": "MM", "burma": "MM",
+    "mongolia": "MN",
+
+    # Oceania
     "australia": "AU",
-    "germany": "DE",
-    "france": "FR",
-    "italy": "IT",
-    "spain": "ES",
+    "new zealand": "NZ",
+    "fiji": "FJ",
+
+    # Africa
+    "south africa": "ZA",
+    "nigeria": "NG",
+    "kenya": "KE",
+    "ethiopia": "ET",
+    "morocco": "MA",
+    "tanzania": "TZ",
+    "ghana": "GH",
+    "algeria": "DZ",
+    "tunisia": "TN",
+    "mauritius": "MU",
+    "rwanda": "RW",
+    "uganda": "UG",
+
+    # South / Central America
+    "brazil": "BR",
+    "argentina": "AR",
+    "chile": "CL",
+    "colombia": "CO",
+    "peru": "PE",
+    "venezuela": "VE",
+    "ecuador": "EC",
+    "uruguay": "UY",
+    "panama": "PA",
+    "costa rica": "CR",
+    "cuba": "CU",
+    "jamaica": "JM",
+    "dominican republic": "DO",
 }
 
-# Preferred main airport for country-level search
+# Preferred main (usually largest international) airport for country-level search
 COUNTRY_MAIN_AIRPORT = {
-    "BD": "DAC",
-    "IN": "DEL",
-    "JP": "NRT",
+    # North America
     "US": "JFK",
-    "GB": "LHR",
-    "AE": "DXB",
-    "SG": "SIN",
-    "MY": "KUL",
-    "TH": "BKK",
-    "ID": "CGK",
-    "CN": "PEK",
-    "KR": "ICN",
-    "NP": "KTM",
-    "QA": "DOH",
-    "SA": "JED",
-    "TR": "IST",
     "CA": "YYZ",
-    "AU": "SYD",
+    "MX": "MEX",
+
+    # UK / Europe
+    "GB": "LHR",
     "DE": "FRA",
     "FR": "CDG",
     "IT": "FCO",
     "ES": "MAD",
+    "PT": "LIS",
+    "NL": "AMS",
+    "BE": "BRU",
+    "CH": "ZRH",
+    "AT": "VIE",
+    "IE": "DUB",
+    "SE": "ARN",
+    "NO": "OSL",
+    "DK": "CPH",
+    "FI": "HEL",
+    "IS": "KEF",
+    "PL": "WAW",
+    "GR": "ATH",
+    "CZ": "PRG",
+    "HU": "BUD",
+    "RO": "OTP",
+    "RU": "SVO",
+    "UA": "KBP",
+
+    # Middle East
+    "AE": "DXB",
+    "QA": "DOH",
+    "SA": "JED",
+    "KW": "KWI",
+    "BH": "BAH",
+    "OM": "MCT",
+    "IL": "TLV",
+    "JO": "AMM",
+    "LB": "BEY",
+    "IR": "IKA",
+    "IQ": "BGW",
+    "TR": "IST",
+    "EG": "CAI",
+
+    # South Asia
+    "IN": "DEL",
+    "BD": "DAC",
+    "NP": "KTM",
+    "LK": "CMB",
+    "PK": "KHI",
+    "BT": "PBH",
+    "MV": "MLE",
+    "AF": "KBL",
+
+    # East / Southeast Asia
+    "JP": "NRT",
+    "CN": "PEK",
+    "KR": "ICN",
+    "KP": "FNJ",
+    "TW": "TPE",
+    "HK": "HKG",
+    "SG": "SIN",
+    "MY": "KUL",
+    "TH": "BKK",
+    "ID": "CGK",
+    "VN": "SGN",
+    "PH": "MNL",
+    "KH": "PNH",
+    "LA": "VTE",
+    "MM": "RGN",
+    "MN": "ULN",
+
+    # Oceania
+    "AU": "SYD",
+    "NZ": "AKL",
+    "FJ": "NAN",
+
+    # Africa
+    "ZA": "JNB",
+    "NG": "LOS",
+    "KE": "NBO",
+    "ET": "ADD",
+    "MA": "CMN",
+    "TZ": "DAR",
+    "GH": "ACC",
+    "DZ": "ALG",
+    "TN": "TUN",
+    "MU": "MRU",
+    "RW": "KGL",
+    "UG": "EBB",
+
+    # South / Central America
+    "BR": "GRU",
+    "AR": "EZE",
+    "CL": "SCL",
+    "CO": "BOG",
+    "PE": "LIM",
+    "VE": "CCS",
+    "EC": "UIO",
+    "UY": "MVD",
+    "PA": "PTY",
+    "CR": "SJO",
+    "CU": "HAV",
+    "JM": "KIN",
+    "DO": "SDQ",
 }
-# Preferred main airport for country-level search
+
+# Preferred main airport for city-level search.
+# India is covered in depth (all major metros + state capitals + key
+# tourist/business hubs), since it is the default region for this app.
 CITY_MAIN_AIRPORT = {
-    "delhi": "DEL",
-    "new delhi": "DEL",
-    "mumbai": "BOM",
-    "kolkata": "CCU",
-    "chennai": "MAA",
-    "bangalore": "BLR",
-    "bengaluru": "BLR",
+    # --- India: metros ---
+    "delhi": "DEL", "new delhi": "DEL",
+    "mumbai": "BOM", "bombay": "BOM",
+    "kolkata": "CCU", "calcutta": "CCU",
+    "chennai": "MAA", "madras": "MAA",
+    "bangalore": "BLR", "bengaluru": "BLR",
+    "hyderabad": "HYD",
 
+    # --- India: other major cities ---
+    "pune": "PNQ",
+    "ahmedabad": "AMD",
+    "surat": "STV",
+    "jaipur": "JAI",
     "lucknow": "LKO",
-    "goa": "GOI",
-    "panaji": "GOI",
-    "dabolim": "GOI",
+    "kanpur": "KNU",
+    "nagpur": "NAG",
+    "indore": "IDR",
+    "bhopal": "BHO",
+    "patna": "PAT",
+    "vadodara": "BDQ", "baroda": "BDQ",
+    "coimbatore": "CJB",
+    "kochi": "COK", "cochin": "COK", "ernakulam": "COK",
+    "thiruvananthapuram": "TRV", "trivandrum": "TRV",
+    "kozhikode": "CCJ", "calicut": "CCJ",
+    "guwahati": "GAU",
+    "chandigarh": "IXC",
+    "bhubaneswar": "BBI",
+    "visakhapatnam": "VTZ", "vizag": "VTZ",
+    "vijayawada": "VGA",
+    "amritsar": "ATQ",
+    "varanasi": "VNS", "banaras": "VNS",
+    "ranchi": "IXR",
+    "raipur": "RPR",
+    "madurai": "IXM",
+    "tiruchirappalli": "TRZ", "trichy": "TRZ",
+    "mangalore": "IXE", "mangaluru": "IXE",
+    "dehradun": "DED",
+    "srinagar": "SXR",
+    "jammu": "IXJ",
+    "leh": "IXL",
+    "udaipur": "UDR",
+    "jodhpur": "JDH",
+    "agra": "AGR",
+    "gaya": "GAY",
+    "imphal": "IMF",
+    "agartala": "IXA",
+    "port blair": "IXZ",
+    "goa": "GOI", "panaji": "GOI", "dabolim": "GOI", "mopa": "GOX",
+    "rajkot": "HSR",
+    "aurangabad": "IXU",
+    "gwalior": "GWL",
+    "tirupati": "TIR",
+    "pondicherry": "PNY", "puducherry": "PNY",
+    "shimla": "SLV",
 
+    # --- East / Southeast Asia ---
     "tokyo": "NRT",
     "osaka": "KIX",
     "kyoto": "KIX",
-
-    "new york": "JFK",
-    "london": "LHR",
-    "dubai": "DXB",
-    "singapore": "SIN",
+    "seoul": "ICN",
+    "beijing": "PEK",
+    "shanghai": "PVG",
+    "hong kong": "HKG",
+    "taipei": "TPE",
     "kuala lumpur": "KUL",
     "bangkok": "BKK",
+    "phuket": "HKT",
+    "jakarta": "CGK",
+    "bali": "DPS", "denpasar": "DPS",
+    "ho chi minh city": "SGN", "saigon": "SGN",
+    "hanoi": "HAN",
+    "manila": "MNL",
+
+    # --- Middle East ---
+    "dubai": "DXB",
+    "abu dhabi": "AUH",
     "doha": "DOH",
+    "riyadh": "RUH",
+    "jeddah": "JED",
     "istanbul": "IST",
-    "toronto": "YYZ",
-    "sydney": "SYD",
+    "cairo": "CAI",
+    "tel aviv": "TLV",
+
+    # --- Europe ---
+    "london": "LHR",
     "paris": "CDG",
     "rome": "FCO",
     "madrid": "MAD",
+    "barcelona": "BCN",
     "frankfurt": "FRA",
-    "dhaka": "DAC"
+    "munich": "MUC",
+    "berlin": "BER",
+    "amsterdam": "AMS",
+    "zurich": "ZRH",
+    "vienna": "VIE",
+    "dublin": "DUB",
+    "lisbon": "LIS",
+    "athens": "ATH",
+    "moscow": "SVO",
+    "warsaw": "WAW",
+    "prague": "PRG",
+    "copenhagen": "CPH",
+    "stockholm": "ARN",
+    "oslo": "OSL",
+    "helsinki": "HEL",
+
+    # --- North America ---
+    "new york": "JFK",
+    "los angeles": "LAX",
+    "san francisco": "SFO",
+    "chicago": "ORD",
+    "toronto": "YYZ",
+    "vancouver": "YVR",
+    "mexico city": "MEX",
+
+    # --- Oceania ---
+    "sydney": "SYD",
+    "melbourne": "MEL",
+    "auckland": "AKL",
+
+    # --- South Asia (non-India) ---
+    "dhaka": "DAC",
+    "kathmandu": "KTM",
+    "colombo": "CMB",
+    "karachi": "KHI",
+    "lahore": "LHE",
+    "male": "MLE",
+
+    # --- Africa ---
+    "johannesburg": "JNB",
+    "cape town": "CPT",
+    "nairobi": "NBO",
+    "lagos": "LOS",
+
+    # --- South America ---
+    "sao paulo": "GRU",
+    "rio de janeiro": "GIG",
+    "buenos aires": "EZE",
+    "bogota": "BOG",
+    "lima": "LIM",
 }
-
-
-
 
 
 def clean_text(text: str) -> str:
@@ -181,8 +448,8 @@ def airport_country_matches(airport: dict, country_code: str) -> bool:
         country = pycountry.countries.get(alpha_2=country_code)
         if country and airport_country.lower() == country.name.lower():
             return True
-    except Exception:
-        pass
+    except LookupError:
+        logger.debug(f"Could not resolve country code '{country_code}' via pycountry")
 
     return False
 
@@ -261,7 +528,7 @@ def resolve_location_to_iata(location: str):
         if airport:
             return airport
 
-    # Exact city match from airport database
+    # Exact / fuzzy city match from airport database
     city_matches = []
 
     for iata, airport in AIRPORTS.items():
@@ -314,7 +581,7 @@ def find_location_mentions(query: str):
         if re.search(rf"\b{re.escape(city)}\b", q):
             mentions.append(city)
 
-    # Remove duplicate while keeping order
+    # Remove duplicates while keeping order
     unique_mentions = []
     for item in mentions:
         if item not in unique_mentions:
@@ -353,21 +620,14 @@ def parse_route(query: str):
         return None, None
 
     # Direct IATA code route: DAC to NRT
-
+    # Only accept codes that are actually valid IATA codes, to avoid
+    # false positives from random 3-letter uppercase words.
     codes = re.findall(r"\b[A-Z]{3}\b", q.upper())
 
-    valid_codes = []
-    for code in codes:
-        if code in AIRPORTS:
-            valid_codes.append(code)
+    valid_codes = [code for code in codes if code in AIRPORTS]
+
     if len(valid_codes) >= 2:
         return valid_codes[0], valid_codes[1]
-    # codes = re.findall(r"\b[A-Z]{3}\b", q)
-
-    if len(codes) >= 2:
-        dep = codes[0].upper()
-        arr = codes[1].upper()
-        return dep, arr
 
     # Pattern: from X to Y
     match = re.search(
@@ -399,13 +659,9 @@ def parse_route(query: str):
 
         return dep_iata, arr_iata
 
-        # Pattern: destination trip from origin
+    # Pattern: destination trip from origin
     # Example: "Japan trip from Bangladesh"
-
-    match = re.search(
-        r"(.+?)\s+trip\s+from\s+(.+)",
-        q_lower
-    )
+    match = re.search(r"(.+?)\s+trip\s+from\s+(.+)", q_lower)
 
     if match:
         dest_text = match.group(1)
@@ -415,6 +671,7 @@ def parse_route(query: str):
         arr_iata = resolve_location_to_iata(dest_text)
 
         return dep_iata, arr_iata
+
     # Pattern: flights from X
     match = re.search(r"\bfrom\s+(.+?)(?:[.!?]|$)", q_lower)
 
@@ -494,32 +751,27 @@ Arrival:
 
 
 def search_flights(query: str, limit: int = 10):
+    """
+    Search for live flights matching a natural-language query.
+
+    Returns a list of formatted flight strings. Returns an empty list
+    if the API key is missing, the API returns an error payload, or
+    no flights are found. Raises CustomException on request/parse
+    failures.
+    """
     logger.info(f"Processing flight search query: '{query}'")
-    
-    
+
     if not API_KEY:
         logger.warning("Flight API key is missing. Cannot complete request.")
         return []
-        # return (
-        #     "Flight API error: AVIATIONSTACK_API_KEY is missing.\n"
-        #     "Please add this in your .env file:\n"
-        #     "AVIATIONSTACK_API_KEY=your_api_key_here"
-        # )
 
     dep_iata, arr_iata = parse_route(query)
-
     logger.info(f"Parsed route -> Departure: {dep_iata}, Arrival: {arr_iata}")
-    # logger.debug(f"Parsed route from query -> Departure: {dep_iata}, Arrival: {arr_iata}")
 
     params = {
-    "access_key": API_KEY,
-    "limit": min(limit,100),
+        "access_key": API_KEY,
+        "limit": min(limit, 100),
     }
-
-    # params = {
-    #     "access_key": API_KEY,
-    #     "limit": min(limit, 100),
-    # }
 
     if dep_iata:
         params["dep_iata"] = dep_iata
@@ -528,97 +780,77 @@ def search_flights(query: str, limit: int = 10):
         params["arr_iata"] = arr_iata
 
     try:
-        logger.info(f"FINAL PARAMS SENT TO AVIATIONSTACK: {params}")
-
-        logger.info("Calling Aviationstack API...")
-
-        response = requests.get(
-            BASE_URL,
-            params=params,
-            timeout=30
-        )
-        logger.info(f"AVIATIONSTACK STATUS CODE: {response.status_code}")
-        logger.info(f"AVIATIONSTACK RESPONSE: {response.text[:500]}")
+        logger.info(f"Calling Aviationstack API with params: {params}")
+        response = requests.get(BASE_URL, params=params, timeout=30)
+        logger.info(f"Aviationstack status code: {response.status_code}")
         data = response.json()
-        logger.info(f"""Flight API Debug:URL: {response.url}Response keys: {data.keys()}""")
-
-
-    # try:
-    #     logger.info("Calling Aviationstack API...")
-    #     logger.info(f"FINAL PARAMS SENT TO AVIATIONSTACK: {params}")
-    #     response = requests.get(BASE_URL, params=params, timeout=30)
-    #     data = response.json()
+        logger.info(f"Flight API response keys: {list(data.keys())}")
     except requests.exceptions.RequestException as e:
         logger.error(f"Aviationstack API request failed: {str(e)}")
         raise CustomException("Flight API request failed", e)
     except ValueError as e:
         logger.error("Aviationstack API returned invalid JSON.")
         raise CustomException("Flight API returned invalid JSON", e)
-    
+
     if "error" in data:
-        error = data["error"]
-        logger.error(f"Flight API returned an error payload: {error}")
+        logger.error(f"Flight API returned an error payload: {data['error']}")
         return []
-    
-    # if "error" in data:
-    #     error = data["error"]
-    #     logger.error(f"Flight API returned an error payload: {error}")
-    #     return (
-    #         "Flight API error:\n"
-    #         f"Code: {error.get('code', 'Unknown')}\n"
-    #         f"Message: {error.get('message', 'Unknown error')}"
-    #     )
 
     flight_data = data.get("data", [])
     logger.info(f"Retrieved {len(flight_data)} flights from API.")
 
     if not flight_data:
-        logger.warning(
-            f"No live flight data found for route {dep_iata} -> {arr_iata}"
-        )
+        logger.warning(f"No live flight data found for route {dep_iata} -> {arr_iata}")
+        return [f"No active flights found for route {dep_iata} -> {arr_iata}"]
 
-        return [
-            f"No active flights found for route {dep_iata} -> {arr_iata}"
-        ]
+    return [format_flight(flight) for flight in flight_data[:limit]]
 
-    # if not flight_data:
-    #     logger.warning("No live flight data found.")
-    #     return []
-
-    # if not flight_data:
-    #     route_text = ""
-    #     if dep_iata and arr_iata:
-    #         route_text = f" for route {dep_iata} to {arr_iata}"
-    #     elif dep_iata:
-    #         route_text = f" from {dep_iata}"
-    #     elif arr_iata:
-    #         route_text = f" to {arr_iata}"
-
-    #     return (
-    #         f"No live flight data found{route_text}.\n\n"
-    #         "Note: AviationStack provides live/status flight data, not ticket prices. "
-    #         "For actual fare prices, use a flight-pricing API such as Amadeus."
-    #     )
-
-    route_info = "Global live flights"
-
-    if dep_iata and arr_iata:
-        route_info = f"Live flights from {dep_iata} to {arr_iata}"
-    elif dep_iata:
-        route_info = f"Live flights from {dep_iata}"
-    elif arr_iata:
-        route_info = f"Live flights to {arr_iata}"
-
-    formatted_flights = [format_flight(flight) for flight in flight_data[:limit]]
-
-    # return f"{route_info}\n\n" + "\n\n---\n\n".join(formatted_flights)
-    return formatted_flights
 
 
 # if __name__ == "__main__":
-#     try:
-#         print(search_flights("Mumbai to Goa"))
-#         print("\n" + "=" * 80 + "\n")
-#         print(search_flights("all country flight info"))
-#     except CustomException as e:
-#         logger.exception(f"CustomException occurred: {str(e)}")
+#     print("=" * 80)
+#     print("Flight Search Tester")
+#     print("Type 'exit' to quit.")
+#     print("=" * 80)
+
+#     while True:
+#         try:
+#             query = input("\nEnter your flight query: ").strip()
+
+#             if query.lower() in {"exit", "quit", "q"}:
+#                 print("Exiting...")
+#                 break
+
+#             if not query:
+#                 print("Please enter a valid query.")
+#                 continue
+
+#             print("\n" + "-" * 80)
+#             print("Parsing Route...")
+#             dep_iata, arr_iata = parse_route(query)
+#             print(f"Departure IATA : {dep_iata}")
+#             print(f"Arrival IATA   : {arr_iata}")
+
+#             print("\nSearching live flights...\n")
+
+#             flights = search_flights(query)
+
+#             if not flights:
+#                 print("No flights found.")
+#             else:
+#                 print(f"Found {len(flights)} flight(s)\n")
+
+#                 for idx, flight in enumerate(flights, start=1):
+#                     print("=" * 80)
+#                     print(f"Flight {idx}")
+#                     print("=" * 80)
+#                     print(flight)
+#                     print()
+
+#         except KeyboardInterrupt:
+#             print("\nExiting...")
+#             break
+
+#         except Exception as e:
+#             logger.exception("Unexpected error while searching flights.")
+#             print(f"\nError: {e}")

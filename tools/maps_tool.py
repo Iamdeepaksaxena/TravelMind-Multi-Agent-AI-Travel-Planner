@@ -25,6 +25,7 @@ def get_place_id(city: str):
 
         params = {
             "text": city,
+            "type": "city",
             "limit": 1,
             "apiKey": API_KEY
         }
@@ -64,14 +65,10 @@ def search_places(category: str, city: str = DEFAULT_CITY, limit: int = 5):
             )
 
         place_id = get_place_id(city)
- 
+
         if place_id is None:
             logger.warning(f"Could not find city: {city}")
             return []
-
-        # if place_id is None:
-        #     logger.warning(f"Could not find city: {city}")
-        #     return f"Could not find {city}"
 
         params = {
             "categories": category,
@@ -87,7 +84,6 @@ def search_places(category: str, city: str = DEFAULT_CITY, limit: int = 5):
 
         places = data.get("features", [])
 
-        
         if not places:
             logger.warning(f"No places found in {city}")
             return []
@@ -118,9 +114,7 @@ Categories: {categories}
 
         logger.info(f"Successfully found {len(results)} places in {city}")
 
-        results
-
-        # return "\n\n".join(results)
+        return results
 
     except requests.exceptions.RequestException as e:
         logger.exception("Geoapify request failed.")
@@ -134,26 +128,26 @@ Categories: {categories}
         raise CustomException("Failed to search places.", e)
 
 
-if __name__ == "__main__":
-    try:
-        print("=" * 70)
-        print("Hotels in Delhi")
-        print("=" * 70)
-        print(search_places("accommodation.hotel"))
+# if __name__ == "__main__":
+#     try:
+#         print("=" * 70)
+#         print("Hotels in Delhi")
+#         print("=" * 70)
+#         print("\n\n".join(search_places("accommodation.hotel")))
 
-        print("\n")
+#         print("\n")
 
-        print("=" * 70)
-        print("Restaurants in Paris")
-        print("=" * 70)
-        print(search_places("catering.restaurant", "Paris"))
+#         print("=" * 70)
+#         print("Restaurants in Paris")
+#         print("=" * 70)
+#         print("\n\n".join(search_places("catering.restaurant", "Paris")))
 
-        print("\n")
+#         print("\n")
 
-        print("=" * 70)
-        print("Museums in Dubai")
-        print("=" * 70)
-        print(search_places("entertainment.museum", "Dubai"))
+#         print("=" * 70)
+#         print("Museums in Dubai")
+#         print("=" * 70)
+#         print("\n\n".join(search_places("entertainment.museum", "Dubai")))
 
-    except CustomException as e:
-        logger.exception(f"CustomException occurred: {str(e)}")
+#     except CustomException as e:
+#         logger.exception(f"CustomException occurred: {str(e)}")
