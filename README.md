@@ -164,7 +164,158 @@ Restart the Jenkins container to apply changes:
 ```bash
 docker restart jenkins-dind
 ```
-
 ### 11. Sign in to Jenkins
 Go to the Jenkins dashboard and sign in using the initial password you retrieved earlier.
 ---
+## 🔗 Step 2 : GitHub Integration with Jenkins
+Follow the steps below to integrate GitHub with Jenkins for automated pipeline execution:
+### 1. Generate Personal GitHub Access Token
+1. Go to **GitHub**.
+2. Navigate to **Settings** -> **Developer Settings** -> **Personal Access Tokens** -> **Classic**.
+3. Click on **Generate New Token**.
+4. Provide a **name** and select the following **permissions**:
+   - `repo` (for repository access)
+   - `repo_hook` (for hook access)
+5. Click **Generate Token**.
+6. **Save** the token securely somewhere (you will not be able to view it again after this page).
+---
+
+### 2. Add GitHub Token to Jenkins
+1. Go to the **Jenkins Dashboard**.
+2. Click **Manage Jenkins** -> **Manage Credentials** -> **Global**.
+3. Click **Add Credentials**.
+4. In the **Username** field, enter your **GitHub account name**.
+5. In the **Password** field, paste the **GitHub token** you just generated.
+6. In the **ID** field, enter a name for this credential (e.g., `github-token`).
+7. Add a **Description** (e.g., `GitHub access token`).
+8. Click **OK** to save the credentials.
+---
+
+### 3. Create a Pipeline Job in Jenkins
+1. Go to the **Jenkins Dashboard**.
+2. Click on **New Item**.
+3. Select **Pipeline** and provide a name for the job.
+4. Click **Apply** and then **Create**.
+---
+
+### 4. Configure Pipeline Checkout
+1. On the left sidebar of the Jenkins job, click **Pipeline Syntax**.
+2. Under **Step**, select **checkout**.
+3. Fill in the necessary details, such as:
+   - **Repository URL** (your GitHub repository URL)
+   - **Credentials** (select the `github-token` created earlier)
+4. Click **Generate Pipeline Script**.
+5. Copy the generated script.
+---
+
+### 5. Create `Jenkinsfile` in VS Code
+1. Open **VS Code** and create a file named **`Jenkinsfile`** ( already done if cloned )
+2. For now only keep the first stage of Jenkinsfile rest should be commendted out.
+> **Explanation**: This simple pipeline has one stage, **Checkout**, where Jenkins will fetch the latest code from your GitHub repository.
+3. Push the `Jenkinsfile` to your GitHub repository.
+---
+
+### 7. Run the Pipeline
+1. Go back to the **Jenkins Dashboard**.
+2. Click on **Build Now** for your pipeline job.
+3. Wait for the build process to complete.
+---
+
+### 8. Check Pipeline Success
+Once the pipeline finishes, you will see a success message, indicating that your first pipeline run was successful. Additionally, in the **Workspace** of the job, you will see that Jenkins has cloned your GitHub repository.
+---
+
+
+# 📊 Step 3 : SonarQube Integration with Jenkins
+Follow these steps to integrate **SonarQube** with Jenkins for code quality analysis.
+### 1. Download and Run SonarQube Docker Container
+1. Go to **DockerHub** and search for **SonarQube**. Scroll down to find the commands.
+2. Run the following commands in a new WSL terminal to configure the system:
+```bash
+sysctl -w vm.max_map_count=524288
+sysctl -w fs.file-max=131072
+ulimit -n 131072
+ulimit -u 8192
+```
+3. Run the SonarQube container with the appropriate settings. Make sure to change the container name to `sonarqube-dind` and remove the dollar sign (`$`) from the command. You will find the command in the **Demo** section of DockerHub.
+```bash
+docker run -d --name sonarqube-dind \
+  -p 9000:9000 \
+  -e SONARQUBE_JDBC_URL=jdbc:postgresql://localhost/sonar \
+  sonarqube
+```
+4. Check if the container is running:
+```bash
+docker ps
+```
+5. Access **SonarQube** on `http://<WSL_IP>:9000` (replace `<WSL_IP>` with your WSL IP address). Log in using the default credentials:
+- **Username:** `admin`
+- **Password:** `admin`
+---
+
+### 2. Install Jenkins Plugins for SonarQube
+1. Go to **Jenkins Dashboard** -> **Manage Jenkins** -> **Manage Plugins**.
+2. Install the following plugins:
+   - **SonarScanner**
+   - **SonarQualityGates**
+3. Restart the Jenkins container inside wsl:
+```bash
+docker restart jenkins-dind
+```
+---
+### 3. Set Up SonarQube in Jenkins
+1. Go to **SonarQube** -> **Create a Local Project**.
+   - Enter a name for the project (e.g., `TravelMind LLMOps`).
+   - Set the **Main Branch**.
+   - Save the project.
+2. Go to **SonarQube** -> **My Account** (top-right) -> **Security** -> **Generate New Token**.
+   - Provide a name (e.g., `global-analysis-token`) and generate the token.
+   - Copy the generated token.
+3. Go to **Jenkins Dashboard** -> **Manage Jenkins** -> **Credentials** -> **Global**.
+4. Add a new **Secret Text** credential:
+   - **ID:** `sonarqube-token`
+   - **Secret:** Paste the token from SonarQube.
+   - Click **OK** to save.
+---
+
+### 4. Configure SonarQube in Jenkins
+1. Go to **Manage Jenkins** -> **System Configuration**.
+2. Scroll down to **SonarQube Servers** and click **Add SonarQube**.
+   - **Name:** `SonarQube` (or any name you prefer)
+   - **URL:** `http://<WSL_IP>:9000` (replace `<WSL_IP>` with your actual IP address)
+   - Select **SonarQube Token** from the credentials dropdown.
+   - Apply and save.
+3. Go to **Manage Jenkins** -> **Tools** and look for **SonarQube Scanner**.
+   - Select **SonarQube Scanner** and configure it.
+   - Tick the option **Install Automatically**.
+---
+
+### 5. Create a Stage in `Jenkinsfile` for SonarQube
+1. Open the **Jenkinsfile** in **VS Code** and add the Sonarqube stage ( already provided in the code )
+2. Push the changes to your **GitHub** repository.
+---
+
+### 6. Create a Docker Network for Jenkins and SonarQube
+1. Run the following command to create a new Docker network:
+```bash
+docker network create dind-network
+```
+2. Connect both containers to the new network:
+```bash
+docker network connect dind-network jenkins-dind
+docker network connect dind-network sonarqube-dind
+```
+3. Update the `Jenkinsfile` to use the container name instead of the IP address: (already done in code)
+```groovy
+-Dsonar.host.url=http://sonarqube-dind:9000
+```
+---
+### 8. Final Pipeline Run
+1. Trigger the **Jenkins Pipeline**.
+2. The build should now be successful, and the code will be analyzed by **SonarQube**.
+
+---
+### 9. View Results in SonarQube
+Go to **SonarQube** and see the code quality report generated for your project.
+---
+
