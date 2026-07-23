@@ -1,7 +1,12 @@
 # TravelMind: Multi-Agent AI Travel Planner
 TravelMind is an end-to-end multi-agent AI platform designed to automate travel planning using Agentic AI and LLM-powered workflows. The application employs LangGraph for agent orchestration and LangChain for tool integration, enabling specialized agents to collaboratively generate personalized travel itineraries, recommend hotels and flights, provide weather insights, perform currency conversion, and retrieve location-based information. The backend is built with FastAPI, PostgreSQL, Docker, and LangSmith, following production-oriented software engineering practices.
 
+## System Architecture
 ![System Architecture](assets/System_architecture.png)
+## 🎥 Demo Video
+<a href="assets/Video.mp4">
+    <img src="assets/Image1.png" width="900">
+</a>
 
 ## 📂 Project Structure
 
