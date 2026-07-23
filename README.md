@@ -1,6 +1,58 @@
 # TravelMind: Multi-Agent AI Travel Planner
 TravelMind is an end-to-end multi-agent AI platform designed to automate travel planning using Agentic AI and LLM-powered workflows. The application employs LangGraph for agent orchestration and LangChain for tool integration, enabling specialized agents to collaboratively generate personalized travel itineraries, recommend hotels and flights, provide weather insights, perform currency conversion, and retrieve location-based information. The backend is built with FastAPI, PostgreSQL, Docker, and LangSmith, following production-oriented software engineering practices.
 
+## 📂 Project Structure
+
+```text
+TravelMind-Multi-Agent-AI-Travel-Planner/
+│
+├── agent/
+│   ├── __init__.py
+│   └── agent.py
+│
+├── assets/
+│   ├── Image1.png
+│   ├── Image2.png
+│   ├── Jenkins.png
+│   ├── LangSmith.png
+│   ├── SonarQube.png
+│   └── Video.mp4
+│
+├── backend/
+│   └── fastapi.py
+│
+├── common/
+│   ├── __init__.py
+│   ├── custom_exceptions.py
+│   └── logger.py
+│
+├── config/
+│   ├── __init__.py
+│   └── settings.py
+│
+├── custom_jenkins/
+│   └── Dockerfile
+│
+├── logs/
+│
+├── tools/
+│   ├── __init__.py
+│   ├── currency_tool.py
+│   ├── flight_tool.py
+│   ├── maps_tool.py
+│   ├── tavily_tool.py
+│   └── weather_tool.py
+│
+├── .env
+├── .gitignore
+├── app.py
+├── Jenkinsfile
+├── LICENSE
+├── README.md
+├── requirements.txt
+└── setup.py
+```
+
 ## WSL Installation
 ## 🐧 Installing Ubuntu via WSL and Docker Engine Inside Ubuntu (on Windows)
 
