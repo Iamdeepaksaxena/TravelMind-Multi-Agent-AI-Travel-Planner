@@ -18,7 +18,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🌍 TripMind AI-Agent")
+st.title("🌍TravelMind: Multi-Agent AI Travel Planner")
 
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
