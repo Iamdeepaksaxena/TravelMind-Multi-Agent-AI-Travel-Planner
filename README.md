@@ -59,7 +59,41 @@ TravelMind-Multi-Agent-AI-Travel-Planner/
 ├── requirements.txt
 └── setup.py
 ```
+# 🛠️ Setup Instructions
 
+### 1. Clone the Repository
+```bash
+git clone https://github.com/Iamdeepaksaxena/TravelMind-Multi-Agent-AI-Travel-Planner.git
+```
+
+### 2. Create and Activate a Virtual Environment
+#### On Windows
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+### 3. Install Dependencies
+```bash
+pip install -e .
+```
+
+### 4. Configure Environment Variables
+Create a `.env` file in the project root and add the required API keys before running the application.
+
+### 5. Run the FastAPI Backend
+Open the **first terminal** and run:
+```bash
+uvicorn backend.fastapi:app --reload
+```
+Now FastAPI backend will be started and now open a new another terminal to run streamlit code:
+
+### 6. Run the Streamlit Frontend
+Open a **second terminal**, activate the virtual environment, and run:
+```bash
+streamlit run app.py
+```
+
+## For CI/CD Pipeline and deployement Phase
 ## WSL Installation
 ## 🐧 Installing Ubuntu via WSL and Docker Engine Inside Ubuntu (on Windows)
 
@@ -114,34 +148,6 @@ sudo usermod -aG docker $USER
 ```bash
 docker --version
 ```
----
-
-# 🛠️ Setup Instructions
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/Iamdeepaksaxena/TravelMind-Multi-Agent-AI-Travel-Planner.git
-```
-
-### 2. Create and Activate a Virtual Environment
-#### On Windows
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-Install the required libraries using:
-```bash
-pip install -e .
-```
-
-### 4. Run the Application Locally
-```bash
-python app/main.py
-```
-
----
 
 ## ✅ Progress Checklist
 The following essential setup steps have been completed:
